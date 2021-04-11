@@ -1,12 +1,10 @@
-import kotlin.IllegalStateException
-
 class Snake {
     lateinit var head: Entity.Snake
         private set
     private val parts = mutableListOf<Entity.Snake>()
 
-    fun start(headX: Int, headY: Int) {
-        head = Entity.Snake(headX, headY)
+    fun start(headPosition: Position) {
+        head = Entity.Snake(headPosition)
         parts.clear()
         addPart()
         addPart()
@@ -15,8 +13,10 @@ class Snake {
     fun addPart() {
         parts.add(
             Entity.Snake(
-                head.positionX,
-                head.positionY
+                Position(
+                    -20,
+                    -20
+                )
             )
         )
     }
@@ -26,42 +26,32 @@ class Snake {
         moveHead(movement)
     }
 
-    fun isOnPixel(x: Int, y: Int): Boolean =
+    fun isOnPixel(x: Int, y: Int) = isOnPixel(Position(x, y))
+
+    fun isOnPixel(pixel: Position): Boolean =
         (parts + head).any { part ->
-            part.positionX == x
-                    && part.positionY == y
+            part.position.x == pixel.x
+                    && part.position.y == pixel.y
         }
 
-    private fun moveParts() {
-        for (index in parts.size - 1 downTo 1) {
-            parts[index] = Entity.Snake(
-                positionX = parts[index - 1].positionX,
-                positionY = parts[index - 1].positionY
-            )
-        }
-        parts[0] = Entity.Snake(
-            positionX = head.positionX,
-            positionY = head.positionY
-        )
-    }
-
-    private fun moveHead(movement: Movement) {
-        var newPositionX = head.positionX
-        var newPositionY = head.positionY
+    fun nextHeadPosition(movement: Movement): Position {
+        var newX = head.position.x
+        var newY = head.position.y
         when (movement) {
             Movement.UP -> {
-                newPositionY -= 1
+                newY -= 1
             }
             Movement.RIGHT -> {
-                newPositionX += 1
+                newX += 1
             }
             Movement.DOWN -> {
-                newPositionY += 1
+                newY += 1
             }
             Movement.LEFT -> {
-                newPositionX -= 1
+                newX -= 1
             }
-            else -> throw IllegalStateException("""
+            else -> throw IllegalStateException(
+                """
                 moveHead => Movement should be one of these: 
                     - UP,
                     - RIGHT,
@@ -70,9 +60,39 @@ class Snake {
             """.trimIndent()
             )
         }
+        return Position(newX, newY)
+    }
+
+    fun headCollidesWithParts(nextPosition: Position): Boolean {
+        return parts.any { part ->
+            part.position == nextPosition
+        }
+    }
+
+    private fun moveParts() {
+        for (index in parts.size - 1 downTo 1) {
+            parts[index] = Entity.Snake(
+                Position(
+                    x = parts[index - 1].position.x,
+                    y = parts[index - 1].position.y
+                )
+            )
+        }
+        parts[0] = Entity.Snake(
+            Position(
+                x = head.position.x,
+                y = head.position.y
+            )
+        )
+    }
+
+    private fun moveHead(movement: Movement) {
+        val position = nextHeadPosition(movement)
         head = Entity.Snake(
-            positionX = newPositionX,
-            positionY = newPositionY
+            Position(
+                x = position.x,
+                y = position.y
+            )
         )
     }
 }

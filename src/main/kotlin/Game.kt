@@ -10,9 +10,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import java.time.format.TextStyle
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -77,8 +75,10 @@ class Game {
                         .onPreviewKeyEvent(::keyHandler)
                         .fillMaxSize()
                 )
-                Text("${stayAwake.value}",
-                modifier = Modifier.requiredSize(0.dp))
+                Text(
+                    "${stayAwake.value}",
+                    modifier = Modifier.requiredSize(0.dp)
+                )
             }
 
             LaunchedEffect(Unit) {
@@ -112,8 +112,8 @@ class Game {
                             val snakeOnPixel = snake.isOnPixel(column, row)
                             if (snakeOnPixel) {
                                 getPixel(true, snake.head)
-                            } else if (apple?.positionX == column
-                                && apple?.positionY == row
+                            } else if (apple?.position?.x == column
+                                && apple?.position?.y == row
                             ) {
                                 getPixel(true, apple!!)
                             } else {
@@ -140,7 +140,12 @@ class Game {
     }
 
     private fun start() {
-        snake.start(SWITCH_ROWS / 2, SWITCH_COLUMNS / 2)
+        snake.start(
+            Position(
+                x = SWITCH_ROWS / 2,
+                y = SWITCH_COLUMNS / 2
+            )
+        )
         apple = null
         generateApple()
 
@@ -152,36 +157,44 @@ class Game {
 
     private fun update() {
         movedAtLeastOnce = true
-        val canMove = checkMove()
-        if (canMove) {
+        val moveCollided = moveCollided()
+        if (moveCollided) {
+            gameLoop.gameState = Loop.State.LOST
+        } else {
             moveSnake()
             checkApple()
-        } else {
-            gameLoop.gameState = Loop.State.LOST
         }
     }
 
-    private fun checkMove(): Boolean {
-        var canMove = true
+    private fun moveCollided(): Boolean {
+        val head = snake.nextHeadPosition(currentMovement)
+        val checkWalls = checkMoveWithWalls(head)
+        val checkParts = snake.headCollidesWithParts(head)
+
+        return checkWalls || checkParts
+    }
+
+    private fun checkMoveWithWalls(position: Position): Boolean {
+        var checkWalls = false
         when (currentMovement) {
             Movement.UP -> {
-                if (snake.head.positionY == 0) {
-                    canMove = false
+                if (position.y < 0) {
+                    checkWalls = true
                 }
             }
             Movement.RIGHT -> {
-                if (snake.head.positionX == SWITCH_COLUMNS) {
-                    canMove = false
+                if (position.x == SWITCH_COLUMNS) {
+                    checkWalls = true
                 }
             }
             Movement.DOWN -> {
-                if (snake.head.positionY == SWITCH_ROWS) {
-                    canMove = false
+                if (position.y == SWITCH_ROWS) {
+                    checkWalls = true
                 }
             }
             Movement.LEFT -> {
-                if (snake.head.positionX == 0) {
-                    canMove = false
+                if (position.x < 0) {
+                    checkWalls = true
                 }
             }
             else -> throw IllegalStateException(
@@ -194,7 +207,7 @@ class Game {
             """.trimIndent()
             )
         }
-        return canMove
+        return checkWalls
     }
 
     private fun moveSnake() {
@@ -203,7 +216,7 @@ class Game {
 
     private fun checkApple() {
         if (apple != null) {
-            if (snake.isOnPixel(apple!!.positionX, apple!!.positionY)) {
+            if (snake.isOnPixel(apple!!.position)) {
                 snake.addPart()
                 score.value += 10
                 apple = null
@@ -270,11 +283,14 @@ class Game {
 
     private fun generateApple() {
         while (apple == null) {
-            val randomX = Random.nextInt(0, SWITCH_COLUMNS)
-            val randomY = Random.nextInt(0, SWITCH_ROWS)
-
-            if (snake.isOnPixel(randomX, randomY).not()) {
-                apple = Entity.Apple(randomX, randomY)
+            val randomPosition = Position(
+                x = Random.nextInt(0, SWITCH_COLUMNS),
+                y = Random.nextInt(0, SWITCH_ROWS)
+            )
+            if (snake.isOnPixel(randomPosition).not()) {
+                apple = Entity.Apple(
+                    randomPosition
+                )
             }
         }
     }
