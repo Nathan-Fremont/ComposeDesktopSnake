@@ -32,18 +32,20 @@ class Screen {
         (SWITCH_HEIGHT.value + SWITCH_PADDING.value) * SWITCH_ROWS
     }
 
-    private val snake = mutableListOf<Entity.Snake>()
-    private var apple: Entity.Apple? = null
 
+    private var apple: Entity.Apple? = null
+    private var snake = Snake()
     private var currentMovement: Movement = Movement.RIGHT
+    private var movedAtLeastOnce = false
     private lateinit var gameLoop: Loop
     private lateinit var updatedFrame: MutableState<Int>
     private val keyboardHandler = KeyboardHandler()
+    private val focusRequester = FocusRequester()
 
     init {
-        snake.add(Entity.Snake(SWITCH_ROWS / 2, SWITCH_COLUMNS / 2))
-        snake.add(Entity.Snake(snake[0].positionX - 1, snake[0].positionY))
-        snake.add(Entity.Snake(snake[1].positionX - 1, snake[1].positionY))
+        snake.moveHead(SWITCH_ROWS / 2, SWITCH_COLUMNS / 2)
+        snake.addPart()
+        snake.addPart()
         generateApple()
     }
 
@@ -66,10 +68,46 @@ class Screen {
         println("GetScreen")
 
         getFrame()
+    }
+
+    @Composable
+    private fun getFrame() {
+        println("parseScreen")
+        Column(
+            verticalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier
+                .focusRequester(focusRequester)
+                .focusable()
+                .onPreviewKeyEvent(::keyHandler)
+                .onKeyEvent(::keyHandler)
+                .fillMaxHeight()
+        ) {
+            Text("Frame = ${updatedFrame.value}")
+            for (row in 0 until SWITCH_ROWS) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    for (column in 0 until SWITCH_COLUMNS) {
+                        val snakeOnPixel = snake.isOnPixel(column, row)
+                        if (snakeOnPixel) {
+                            getPixel(true)
+                        } else if (apple?.positionX == column
+                            && apple?.positionY == row){
+                            getPixel(true)
+                        } else {
+                            getPixel(false)
+                        }
+                    }
+                }
+            }
+        }
 
         LaunchedEffect(Unit) {
             while (true) {
                 withFrameMillis { frame ->
+                    focusRequester.requestFocus()
 //                    println("Frame = $frame")
                     if (gameLoop.shouldUpdate()) {
                         updatedFrame.value += 1
@@ -81,22 +119,9 @@ class Screen {
         }
     }
 
-    @Composable
-    private fun getFrame() {
-        parseScreen(object : PixelCallback {
-            @Composable
-            override fun drawForPixel(column: Int, row: Int) {
-//                snake.forEach { part ->
-                    getPixel(
-                        isSnakeOnPixel(column, row)
-                    )
-//                }
-            }
-        })
-    }
-
     private fun update() {
         println("update = ${updatedFrame.value}")
+        movedAtLeastOnce = true
         val canMove = checkMove()
         if (canMove) {
             moveSnake()
@@ -110,94 +135,60 @@ class Screen {
         var canMove = true
         when (currentMovement) {
             Movement.UP -> {
-                if (snake[0].positionY == 0) {
+                if (snake.head.positionY == 0) {
                     canMove = false
                 }
             }
             Movement.RIGHT -> {
-                if (snake[0].positionX == SWITCH_COLUMNS) {
+                if (snake.head.positionX == SWITCH_COLUMNS) {
                     canMove = false
                 }
             }
             Movement.DOWN -> {
-                if (snake[0].positionY == SWITCH_ROWS) {
+                if (snake.head.positionY == SWITCH_ROWS) {
                     canMove = false
                 }
             }
             Movement.LEFT -> {
-                if (snake[0].positionX == 0) {
+                if (snake.head.positionX == 0) {
                     canMove = false
                 }
             }
+            else -> throw IllegalStateException("""
+                checkMove => Movement should be one of these: 
+                    - UP,
+                    - RIGHT,
+                    - DOWN,
+                    - LEFT
+            """.trimIndent()
+            )
         }
         return canMove
     }
 
     private fun moveSnake() {
-        for (index in snake.size - 1 downTo 1) {
-            snake[index] = Entity.Snake(
-                positionX = snake[index - 1].positionX,
-                positionY = snake[index - 1].positionY
-            )
-        }
-        var newPositionX = snake[0].positionX
-        var newPositionY = snake[0].positionY
-        when (currentMovement) {
-            Movement.UP -> {
-                newPositionY -= 1
-            }
-            Movement.RIGHT -> {
-                newPositionX += 1
-            }
-            Movement.DOWN -> {
-                newPositionY += 1
-            }
-            Movement.LEFT -> {
-                newPositionX -= 1
-            }
-        }
-        snake[0] = Entity.Snake(
-            positionX = newPositionX,
-            positionY = newPositionY
-        )
+        snake.moveSnake(currentMovement)
     }
 
     private fun checkApple() {
-
-    }
-
-    @Composable
-    private fun parseScreen(pixelCallback: PixelCallback) {
-        println("parseScreen")
-        Column(
-            verticalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier
-                .focusModifier()
-                .focusable(enabled = true)
-                .focusRequester(FocusRequester.Default)
-                .onKeyEvent { event ->
-                    val newMovement = keyboardHandler.handleKeyEventForMovement(keyEvent = event)
-                    if (newMovement != Movement.NONE) {
-                        currentMovement = newMovement
-                    }
-                    false
-                }
-                .fillMaxHeight()
-        ) {
-            Text("Frame = ${updatedFrame.value}")
-            for (row in 0 until SWITCH_ROWS) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusable(enabled = false),
-                ) {
-                    for (column in 0 until SWITCH_COLUMNS) {
-                        pixelCallback.drawForPixel(column, row)
-                    }
-                }
+        if (apple != null) {
+            if (snake.isOnPixel(apple!!.positionX, apple!!.positionY)) {
+                snake.addPart()
+                apple = null
+                generateApple()
             }
         }
+    }
+
+    private fun keyHandler(event: KeyEvent) : Boolean {
+        val newMovement = keyboardHandler.handleKeyEventForMovement(keyEvent = event)
+        if (newMovement != Movement.NONE
+            && newMovement.illegalMovement() != currentMovement
+            && movedAtLeastOnce) {
+            currentMovement = newMovement
+            movedAtLeastOnce = false
+        }
+        return false
     }
 
     @Composable
@@ -212,18 +203,12 @@ class Screen {
         )
     }
 
-    private fun isSnakeOnPixel(x: Int, y: Int): Boolean =
-        snake.any { part ->
-            part.positionX == x
-                    && part.positionY == y
-        }
-
     private fun generateApple() {
         while (apple == null) {
             val randomX = Random.nextInt(0, SWITCH_COLUMNS)
             val randomY = Random.nextInt(0, SWITCH_ROWS)
 
-            if (isSnakeOnPixel(randomX, randomY).not()) {
+            if (snake.isOnPixel(randomX, randomY).not()) {
                 apple = Entity.Apple(randomX, randomY)
             }
         }
