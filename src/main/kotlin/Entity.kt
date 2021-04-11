@@ -1,7 +1,5 @@
-sealed class Entity(
-    open val positionX: Int,
-    open val positionY: Int
-) {
-    data class Snake(override val positionX: Int, override val positionY: Int): Entity(positionX, positionY)
-    data class Apple(override val positionX: Int, override val positionY: Int): Entity(positionX, positionY)
+sealed class Entity {
+    data class Snake(val positionX: Int, val positionY: Int): Entity()
+    data class Apple(val positionX: Int, val positionY: Int): Entity()
+    object None: Entity()
 }

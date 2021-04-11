@@ -5,6 +5,13 @@ class Snake {
         private set
     private val parts = mutableListOf<Entity.Snake>()
 
+    fun start(headX: Int, headY: Int) {
+        head = Entity.Snake(headX, headY)
+        parts.clear()
+        addPart()
+        addPart()
+    }
+
     fun addPart() {
         parts.add(
             Entity.Snake(
@@ -12,10 +19,6 @@ class Snake {
                 head.positionY
             )
         )
-    }
-
-    fun moveHead(x: Int, y: Int) {
-        head = Entity.Snake(x, y)
     }
 
     fun moveSnake(movement: Movement) {

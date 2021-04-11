@@ -1,24 +1,26 @@
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
 
 class KeyboardHandler {
     fun handleKeyEventForMovement(keyEvent: KeyEvent): Movement {
-        println("handleKeyEventForMovement = $keyEvent")
-
         return when (keyEvent.nativeKeyEvent.keyChar) {
-            'z' -> return Movement.UP
-            'd' -> return Movement.RIGHT
-            's' -> return Movement.DOWN
-            'q' -> return Movement.LEFT
+            'z' -> Movement.UP
+            'd' -> Movement.RIGHT
+            's' -> Movement.DOWN
+            'q' -> Movement.LEFT
             else -> Movement.NONE
         }
     }
 
     fun handleKeyEventForActions(keyEvent: KeyEvent): Actions {
-        println("handleKeyEventForActions = $keyEvent")
-
-        return when (keyEvent.nativeKeyEvent.keyChar) {
-            'p' -> return Actions.PAUSE
-            else -> Actions.NONE
+        if (keyEvent.type == KeyEventType.KeyUp) {
+            return when (keyEvent.nativeKeyEvent.keyChar) {
+                'p' -> Actions.PAUSE
+                'r' -> Actions.RETRY
+                else -> Actions.NONE
+            }
         }
+        return Actions.NONE
     }
 }

@@ -1,13 +1,21 @@
+import Loop.State.*
+
 class Loop {
     companion object {
-        private const val FRAME_TIME = 500L
+        private const val FRAME_TIME = 100L
+    }
+
+    enum class State {
+        RUNNING,
+        PAUSED,
+        LOST
     }
 
     private var lastUpdatedTime = System.currentTimeMillis()
-    private var canUpdate = true
+    var gameState = RUNNING
 
     fun shouldUpdate(): Boolean {
-        if (canUpdate) {
+        if (gameState == RUNNING) {
             val elapsedTime = System.currentTimeMillis()
             return elapsedTime - lastUpdatedTime > FRAME_TIME
         }
@@ -15,12 +23,16 @@ class Loop {
     }
 
     fun markAsUpdated() {
-        if (canUpdate) {
+        if (gameState == RUNNING) {
             lastUpdatedTime = System.currentTimeMillis()
         }
     }
 
-    fun stopUpdating() {
-        canUpdate = false
+    fun pauseUnpause() {
+        gameState = when (gameState) {
+            RUNNING -> PAUSED
+            PAUSED -> RUNNING
+            LOST -> LOST
+        }
     }
 }
