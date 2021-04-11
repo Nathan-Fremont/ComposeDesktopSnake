@@ -1,3 +1,4 @@
+import androidx.compose.animation.core.keyframes
 import androidx.compose.desktop.Window
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
@@ -12,11 +13,13 @@ import kotlin.math.roundToInt
 
 private val screen = Screen()
 
+//@OptIn(ExperimentalKeyInput::class)
 fun main() = Window(
     title = "Snake",
     resizable = false,
-    size = screen.getWindowSize()
+    size = screen.getWindowSize(),
 ) {
+
     MaterialTheme {
         screen.getScreen()
     }
